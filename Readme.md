@@ -9,23 +9,23 @@
 * configuration 
 * files have format:
 ```scala 
-trait Organisation_LibraryName {
+trait Organisation_1_Library_1 {
   val VER1 = ver("ver1")
   ... 
   val last = VER_N
 }
 
-object Organisation_LibraryName extends Organisation_LibraryName {
+object Organisation_1_Library_1 extends Organisation_LibraryName {
   def ver = s"org % name % _ "
   def apply(version_name) = ver(version_name)
 }
 
-trait Organisation {
-  val LibraryName = Organisation_LibraryName
+trait Organisation_1 {
+  val Library_1 = Organisation_1_Library_1
   
 }
 
-object Organisation extends Organisation
+object Organisation_1 extends Organisation_1
 
 trait ScalaLibraries 
   val ORG_1 = Organisation
@@ -37,4 +37,5 @@ trait JavaLibraries {
   ...
 }
 
+trait Libraries extends JavaLibraries with ScalaLibraries
 ```
