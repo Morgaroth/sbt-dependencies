@@ -39,3 +39,13 @@ trait JavaLibraries {
 
 trait Libraries extends JavaLibraries with ScalaLibraries
 ```
+
+
+#### TODO list
+
+* group scala dependencies by scala version into one, align model to this
+* add configuring by file and command line options
+  * list of organisations (type - scala/java, source: maven/bintray)
+  * list of aliases - possible aliases for names
+  * integrate with existing sbt-commons plugin
+  
