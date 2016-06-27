@@ -1,0 +1,19 @@
+<%@ val libs: List[io.github.morgaroth.sbt.scrapper.Dependency] %>
+<%@  val org: io.github.morgaroth.sbt.scrapper.OrganisationCfg %>
+<%
+  val name = org.capitalizedName
+  val glue = if(libs.map(_.scala).forall(_ == "java")) "%" else "%%"
+%>
+package libraries
+
+import sbt.Keys._
+
+trait ${name} {
+#for (i <- libs)
+  val ${i.capitalizedName} = ${i.fullName}
+#end
+}
+
+object ${name} extends ${name} {
+  def ver(library:String, version: String) = "${org.name}" ${glue} library % version
+}

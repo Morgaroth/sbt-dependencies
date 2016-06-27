@@ -1,29 +1,33 @@
 package io.github.morgaroth.sbt.scrapper
 
-import net.ruippeixotog.scalascraper.browser.Browser
-import org.joda.time.DateTime
-
 import scala.annotation.tailrec
 
 /**
   * Created by morgaroth on 05.04.2016.
   */
 object MVNRepositoryScanner {
-  def checkMVNRepository(organisation: String, cache: DependencyDAO) {
-    val data: List[Dependency] = findPackagesOf(organisation)
-    val newData = data.flatMap { d =>
-      val newest = cache.updateVersions(d)
-      Some(d.copy(versions = newest)).filter(_.versions.nonEmpty)
-    }
-    println(s"Fetched ${data.length} artifacts for $organisation, ${newData.length} with new versions")
-  }
+  //  def checkMVNRepository(organisation: String, cache: DependencyDAO) {
+  //    val data: List[Dependency] = findPackagesOf(organisation)
+  //    val newData = data.flatMap { d =>
+  //      val newest = cache.updateVersions(d)
+  //      Some(d.copy(versions = newest)).filter(_.versions.nonEmpty)
+  //    }
+  //    println(s"Fetched ${data.length} artifacts for $organisation, ${newData.length} with new versions")
+  //  }
 
-  def findPackagesOf(organisation: String): List[Dependency] = {
-    MVNRepositoryScanner.scanOrganisation(organisation).values.par.map(MVNRepositoryScanner.scanVersions).toList
+  def findPackagesOf(organisation: OrganisationCfg): List[Dependency] = {
+    def excludedFilter(key: String) = {
+      true
+    }
+    MVNRepositoryScanner.scanOrganisation(organisation.name)
+      .filterKeys(excludedFilter)
+      .values.par
+      .map(MVNRepositoryScanner.scanVersions).toList
   }
 
   val serviceUrl = "http://mvnrepository.com/artifact"
-  val browser = new Browser
+  val browser = new net.ruippeixotog.scalascraper.browser.JsoupBrowser
+
 
   def organisationPage(organisation: String, pageNum: Int) = s"$serviceUrl/$organisation?p=$pageNum"
 
@@ -57,10 +61,14 @@ object MVNRepositoryScanner {
   }
 
   def scanVersions(dependency: Dependency) = {
-    val versions =
-      (browser.get(s"$serviceUrl/${dependency.organisation}/${dependency.artifactName}") >> elementList(".release") >>(attr("href")("a"), text("a"))).map {
-        case (link, name) => Version(name, DateTime.now())
-      }
+    val url: String = s"$serviceUrl/${dependency.organisation}/${dependency.artifactName}"
+    val document = browser.get(url)
+    val versions = (document >> element(".grid.versions") >> element("tbody") >> elementList("tr") >>
+      (element(".vbtn.release") >>(attr("href")("a"), text("a")), elementList("td") map (_.last.innerHtml))
+      ).map {
+      case ((link, name), date) =>
+        Version(name, s"$serviceUrl/${dependency.organisation}/$link", date.filterNot(x => x == '(' || x == ')'))
+    }
     dependency.copy(versions = versions)
   }
 }

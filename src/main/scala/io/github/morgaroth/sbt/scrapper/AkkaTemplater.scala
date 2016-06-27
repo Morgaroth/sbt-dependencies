@@ -6,7 +6,7 @@ package io.github.morgaroth.sbt.scrapper
 class AkkaTemplater(cache: DependencyDAO) {
 
   def handle() = {
-    val updated = MVNRepositoryScanner.findPackagesOf("com.typesafe.akka")
+//    val updated = MVNRepositoryScanner.findPackagesOf("com.typesafe.akka")
 
   }
 
