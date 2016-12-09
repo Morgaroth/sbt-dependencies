@@ -1,0 +1,16 @@
+<%@ val organisations: List[io.github.morgaroth.sbt.scrapper.OrganisationCfg] %>
+<%@ val p: String %>
+package ${p}
+
+#for (i <- organisations)
+import ${p}.organisations.${i.capitalizedName}
+#end
+
+object Libraries extends Libraries
+
+trait DummyTrait
+
+trait Libraries extends DummyTrait
+#for (i <- organisations)
+  with ${i.capitalizedName}
+#end

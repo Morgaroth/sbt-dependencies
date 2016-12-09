@@ -1,12 +1,15 @@
 <%@ val libs: List[io.github.morgaroth.sbt.scrapper.Dependency] %>
-<%@  val org: io.github.morgaroth.sbt.scrapper.OrganisationCfg %>
+<%@ val org: io.github.morgaroth.sbt.scrapper.OrganisationCfg %>
+<%@ val p: String %>
 <%
   val name = org.capitalizedName
   val glue = if(libs.map(_.scala).forall(_ == "java")) "%" else "%%"
 %>
-package libraries
+package ${p}.organisations
 
+import sbt._
 import sbt.Keys._
+import ${p}.libraries._
 
 trait ${name} {
 #for (i <- libs)

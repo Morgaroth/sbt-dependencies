@@ -1,5 +1,7 @@
 package io.github.morgaroth.sbt.scrapper
 
+import java.io.Serializable
+
 import better.files.Cmds._
 import better.files.File
 import com.mongodb.casbah.commons.MongoDBObject
@@ -8,7 +10,9 @@ import com.novus.salat.grater
 import com.typesafe.config.ConfigFactory
 import io.github.morgaroth.utils.mongodb.salat.MongoDAOJodaSupport
 import org.fusesource.scalate.TemplateEngine
+import org.joda.time.DateTime
 
+import scala.collection.immutable.Seq
 import scala.util.Try
 
 /**
@@ -30,22 +34,43 @@ object Application {
     doWork(organisations.map(x => OrganisationCfg(x)))
   }
 
+  val rootPackage = "io.github.morgaroth.sbt.commons"
+  val rootPwd = pwd / "plugin"
+  val sourcesRoot = rootPackage.split('.').foldLeft(rootPwd / "src" / "main" / "scala") { case (f, p) => f / p }
+
   def escape(s: String) = s
 
   def doWork(config: List[OrganisationCfg]) = {
-    val outputDir: File = pwd / "plugin" / "src" / "libraries"
-    Try(mkdirs(outputDir))
-    outputDir.clear()
+    Try(rootPwd.clear())
+    Try(mkdirs(sourcesRoot))
+    Try(mkdirs(sourcesRoot / "libraries"))
+    Try(mkdirs(sourcesRoot / "organisations"))
+    pwd / "src" / "main" / "resources" / "raw" copyTo rootPwd
     val engine = new TemplateEngine
     config.map { orgCfg =>
-      val libraries = MVNRepositoryScanner.findPackagesOf(orgCfg).map { d =>
-        val data = Map("d" -> d)
-        val output = engine.layout("/library.ssp", data)
-        outputDir / s"${orgCfg.capitalizedName}_${d.capitalizedName}.scala" < output
-        d
+      val libraries: List[Dependency] = MVNRepositoryScanner.findPackagesOf(orgCfg).groupBy(_.capitalizedName).mapValues { theSameNameDeps =>
+        val (scalaLibs, javaLibs) = theSameNameDeps.partition(_.scala != "java")
+        if (scalaLibs.nonEmpty && javaLibs.isEmpty) {
+          val allVersions = scalaLibs.flatMap(x => x.versions.map(_.copy(scala = x.scala)))
+          scalaLibs.head.copy(versions = allVersions, scala = "scala")
+        } else if (javaLibs.size == 1) {
+          javaLibs.head
+        } else {
+          println(s"WTF $javaLibs")
+          javaLibs.head
+        }
+      }.values.toList
+      //            val libraries: List[Dependency] = MVNRepositoryScanner.findPackagesOf(orgCfg)
+      libraries.foreach { d =>
+        val versions: List[(String, List[Version])] = if (d.scala == "scala") {
+          d.versions.groupBy(_.name).mapValues(_.sortBy(_.date.getMillis)).toList
+        } else d.sortedVersions.map(x => x.name -> List(x))
+        val output = engine.layout("/library.ssp", Map("d" -> d,"v"->versions, "p" -> rootPackage))
+        sourcesRoot / "libraries" / s"${orgCfg.capitalizedName}_${d.capitalizedName}.scala" < output
       }
-      outputDir / s"${orgCfg.capitalizedName}.scala" < engine.layout("/organisation.ssp", Map("libs" -> libraries, "org" -> orgCfg))
+      sourcesRoot / "organisations" / s"${orgCfg.capitalizedName}.scala" < engine.layout("/organisation.ssp", Map("libs" -> libraries, "org" -> orgCfg, "p" -> rootPackage))
     }
+    sourcesRoot / "Libraries.scala" < engine.layout("/libraries.ssp", Map("organisations" -> config, "p" -> rootPackage))
   }
 }
 
@@ -69,11 +94,11 @@ case class Dependency(organisation: String, humanName: String, name: String, sca
   }
 
   lazy val mongoID = s"${organisation}__${name}__$scala"
-  lazy val sortedVersions = versions
+  lazy val sortedVersions = versions.sortBy(_.date.getMillis).reverse
   lazy val last = sortedVersions.head
 }
 
-case class Version(name: String, link: String, date: String)
+case class Version(name: String, link: String, date: DateTime, scala: String = "")
 
 class DependencyDAO extends MongoDAOJodaSupport[Dependency](ConfigFactory.parseString("""uri="mongodb://localhost/SbtCommons""""), "SbtCommons") {
 

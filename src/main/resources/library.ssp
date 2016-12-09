@@ -1,18 +1,22 @@
 <%@ val d: io.github.morgaroth.sbt.scrapper.Dependency %>
+<%@ val v: List[(String, List[io.github.morgaroth.sbt.scrapper.Version])]%>
+<%@ val p: String %>
 <%
     val name = d.fullName
     val glue = if(d.scala != "java") "%%" else "%"
 %>
-package libraries
+package ${p}.libraries
 
+import sbt._
 import sbt.Keys._
 
 trait ${name} {
   import ${name}._
-#for (i <- d.sortedVersions)
-  // See ${i.link}
-  // Deployed ${i.date}
-  val `${i.name}` = ver("${i.name}")
+#for (x <- v)
+#for (i <- x._2)
+  // Built for ${i.scala} on ${i.date.toString("dd MMM yyyy")}. See ${i.link}
+#end
+  val `${x._1}` = ver("${x._1}")
 
 #end
   val last = `${d.last.name}`

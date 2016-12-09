@@ -1,5 +1,10 @@
 package io.github.morgaroth.sbt.scrapper
 
+import java.util.Locale
+
+import net.ruippeixotog.scalascraper.model.Element
+import org.joda.time.format.DateTimeFormat
+
 import scala.annotation.tailrec
 
 /**
@@ -19,6 +24,7 @@ object MVNRepositoryScanner {
     def excludedFilter(key: String) = {
       true
     }
+
     MVNRepositoryScanner.scanOrganisation(organisation.name)
       .filterKeys(excludedFilter)
       .values.par
@@ -39,7 +45,7 @@ object MVNRepositoryScanner {
       val doc = browser.get(organisationPage(organisation, pageNum))
       (doc >> elementList(".im-title")).map(_ ~/~ validator(attr("href")("a")) { x =>
         x.nonEmpty
-      } >>(attr("href")("a"), text("a"))).map(_.right.get).flatMap { case (x, humanName) =>
+      } >> (attr("href")("a"), text("a"))).map(_.right.get).flatMap { case (x, humanName) =>
         val data = x.split(Array('_', '/')).toList
         if (data.head == organisation) {
           val libType: String = data.drop(2).headOption.getOrElse("java")
@@ -57,18 +63,33 @@ object MVNRepositoryScanner {
         acc
       }
     }
+
     rec()
   }
+
+  val dateReader = DateTimeFormat.forPattern("(MMM dd, yyyy)").withLocale(Locale.ENGLISH)
 
   def scanVersions(dependency: Dependency) = {
     val url: String = s"$serviceUrl/${dependency.organisation}/${dependency.artifactName}"
     val document = browser.get(url)
-    val versions = (document >> element(".grid.versions") >> element("tbody") >> elementList("tr") >>
-      (element(".vbtn.release") >>(attr("href")("a"), text("a")), elementList("td") map (_.last.innerHtml))
-      ).map {
-      case ((link, name), date) =>
-        Version(name, s"$serviceUrl/${dependency.organisation}/$link", date.filterNot(x => x == '(' || x == ')'))
+    val versionRow = document >> element(".grid.versions") >> element("tbody") >> elementList("tr")
+    val versionElem: List[List[Element]] = versionRow >> elementList(".vbtn")
+    if (versionElem.isEmpty) {
+      dependency
+    } else {
+      val versionLink = versionElem.head >> attr("href")("a")
+      val data = versionLink.map { link =>
+        val infoTable = browser.get(s"$serviceUrl/${dependency.organisation}/$link") >> element("#maincontent > .grid")
+        val elem = (infoTable >> element("tr:has(th:contains(Date)) > td")).innerHtml
+        link -> dateReader.parseDateTime(elem)
+      }
+      val versions = data.map {
+        case (link, date) =>
+          val name = link.split('/').last
+          Version(name, s"$serviceUrl/${dependency.organisation}/$link", date)
+      }
+      dependency.copy(versions = versions)
     }
-    dependency.copy(versions = versions)
+
   }
 }
