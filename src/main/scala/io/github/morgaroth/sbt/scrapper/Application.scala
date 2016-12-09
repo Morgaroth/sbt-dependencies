@@ -1,9 +1,6 @@
 package io.github.morgaroth.sbt.scrapper
 
-import java.io.Serializable
-
 import better.files.Cmds._
-import better.files.File
 import com.mongodb.casbah.commons.MongoDBObject
 import com.novus.salat.global.ctx
 import com.novus.salat.grater
@@ -12,7 +9,6 @@ import io.github.morgaroth.utils.mongodb.salat.MongoDAOJodaSupport
 import org.fusesource.scalate.TemplateEngine
 import org.joda.time.DateTime
 
-import scala.collection.immutable.Seq
 import scala.util.Try
 
 /**
@@ -24,9 +20,9 @@ object Application {
 
   val organisations = List(
     "joda-time",
-    //    "org.joda",
-    "io.spray"
-    //      "ch.qos.logback"
+    "org.joda",
+    "io.spray",
+    "ch.qos.logback"
   )
 
   def main(args: Array[String]): Unit = {
@@ -65,7 +61,7 @@ object Application {
         val versions: List[(String, List[Version])] = if (d.scala == "scala") {
           d.versions.groupBy(_.name).mapValues(_.sortBy(_.date.getMillis)).toList
         } else d.sortedVersions.map(x => x.name -> List(x))
-        val output = engine.layout("/library.ssp", Map("d" -> d,"v"->versions, "p" -> rootPackage))
+        val output = engine.layout("/library.ssp", Map("d" -> d, "v" -> versions, "p" -> rootPackage))
         sourcesRoot / "libraries" / s"${orgCfg.capitalizedName}_${d.capitalizedName}.scala" < output
       }
       sourcesRoot / "organisations" / s"${orgCfg.capitalizedName}.scala" < engine.layout("/organisation.ssp", Map("libs" -> libraries, "org" -> orgCfg, "p" -> rootPackage))

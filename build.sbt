@@ -4,8 +4,6 @@ version := "1.0"
 
 scalaVersion := "2.11.8"
 
-//enableSbtPlugins(SbtCommons)
-
 libraryDependencies ++= Seq(
   "net.ruippeixotog" %% "scala-scraper" % "1.0.0",
   "org.eclipse.aether" % "aether-api" % "1.1.0",

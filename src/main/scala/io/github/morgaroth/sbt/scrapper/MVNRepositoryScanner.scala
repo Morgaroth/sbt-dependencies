@@ -22,7 +22,8 @@ object MVNRepositoryScanner {
 
   def findPackagesOf(organisation: OrganisationCfg): List[Dependency] = {
     def excludedFilter(key: String) = {
-      true
+      val isExamples = key.contains("Examples")
+      !isExamples
     }
 
     MVNRepositoryScanner.scanOrganisation(organisation.name)
@@ -67,7 +68,7 @@ object MVNRepositoryScanner {
     rec()
   }
 
-  val dateReader = DateTimeFormat.forPattern("(MMM dd, yyyy)").withLocale(Locale.ENGLISH)
+  val dateReader = DateTimeFormat.forPattern("(MMM dd, yyyy)").withLocale(Locale.ENGLISH).withZoneUTC()
 
   def scanVersions(dependency: Dependency) = {
     val url: String = s"$serviceUrl/${dependency.organisation}/${dependency.artifactName}"
