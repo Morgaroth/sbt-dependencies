@@ -14,7 +14,8 @@ trait ${name} {
   import ${name}._
 #for (x <- v)
 #for (i <- x._2)
-  // Built for ${i.scala} on ${i.date.toString("dd MMM yyyy")}. See ${i.link}
+  <% val a: String = if(i.scala.nonEmpty) "for " + i.scala+" " else "" %>
+  // Built ${a}on ${i.date.toString("dd MMM yyyy")}. See ${i.link}
 #end
   val `${x._1}` = ver("${x._1}")
 

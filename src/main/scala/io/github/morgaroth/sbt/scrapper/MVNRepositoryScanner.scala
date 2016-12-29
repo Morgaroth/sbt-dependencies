@@ -20,10 +20,11 @@ object MVNRepositoryScanner {
   //    println(s"Fetched ${data.length} artifacts for $organisation, ${newData.length} with new versions")
   //  }
 
-  def findPackagesOf(organisation: OrganisationCfg): List[Dependency] = {
+  def findLibrariesOf(organisation: OrganisationCfg): List[Dependency] = {
     def excludedFilter(key: String) = {
-      val isExamples = key.contains("Examples")
-      !isExamples
+      val isExamples = key.toLowerCase.contains("examples")
+      val isSpringSource = key.toLowerCase.contains("com.springsource")
+      !(isExamples || isSpringSource)
     }
 
     MVNRepositoryScanner.scanOrganisation(organisation.name)
@@ -52,7 +53,7 @@ object MVNRepositoryScanner {
           val libType: String = data.drop(2).headOption.getOrElse("java")
           Some(s"${data(1)}_$libType" -> Dependency(organisation, humanName, data(1), libType))
         } else None
-      }.toMap.filterNot(_._1.contains("sample"))
+      }.toMap
     }
 
     @tailrec
@@ -74,12 +75,11 @@ object MVNRepositoryScanner {
     val url: String = s"$serviceUrl/${dependency.organisation}/${dependency.artifactName}"
     val document = browser.get(url)
     val versionRow = document >> element(".grid.versions") >> element("tbody") >> elementList("tr")
-    val versionElem: List[List[Element]] = versionRow >> elementList(".vbtn")
-    if (versionElem.isEmpty) {
+    val versionElems: List[String] = (versionRow >> elementList(".vbtn") >> attr("href")("a")).flatten.filterNot(_.contains("parent.version"))
+    if (versionElems.isEmpty) {
       dependency
     } else {
-      val versionLink = versionElem.head >> attr("href")("a")
-      val data = versionLink.map { link =>
+      val data = versionElems.map { link =>
         val infoTable = browser.get(s"$serviceUrl/${dependency.organisation}/$link") >> element("#maincontent > .grid")
         val elem = (infoTable >> element("tr:has(th:contains(Date)) > td")).innerHtml
         link -> dateReader.parseDateTime(elem)
@@ -91,6 +91,5 @@ object MVNRepositoryScanner {
       }
       dependency.copy(versions = versions)
     }
-
   }
 }

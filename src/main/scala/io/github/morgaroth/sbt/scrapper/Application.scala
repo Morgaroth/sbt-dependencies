@@ -44,7 +44,7 @@ object Application {
     pwd / "src" / "main" / "resources" / "raw" copyTo rootPwd
     val engine = new TemplateEngine
     config.map { orgCfg =>
-      val libraries: List[Dependency] = MVNRepositoryScanner.findPackagesOf(orgCfg).groupBy(_.capitalizedName).mapValues { theSameNameDeps =>
+      val libraries: List[Dependency] = MVNRepositoryScanner.findLibrariesOf(orgCfg).groupBy(_.capitalizedName).mapValues { theSameNameDeps =>
         val (scalaLibs, javaLibs) = theSameNameDeps.partition(_.scala != "java")
         if (scalaLibs.nonEmpty && javaLibs.isEmpty) {
           val allVersions = scalaLibs.flatMap(x => x.versions.map(_.copy(scala = x.scala)))
@@ -53,7 +53,8 @@ object Application {
           javaLibs.head
         } else {
           println(s"WTF $javaLibs")
-          javaLibs.head
+          val allVersions = javaLibs.flatMap(_.versions)
+          javaLibs.head.copy(versions = allVersions)
         }
       }.values.toList
       //            val libraries: List[Dependency] = MVNRepositoryScanner.findPackagesOf(orgCfg)
