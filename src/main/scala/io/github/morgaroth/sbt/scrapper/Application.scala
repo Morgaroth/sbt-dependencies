@@ -19,15 +19,16 @@ object Application {
   val dao = new DependencyDAO
 
   val organisations = List(
-    "joda-time",
-    "org.joda",
-    "io.spray",
-    "ch.qos.logback"
+//    "joda-time",
+//    "org.joda"
+    "io.spray"
+//    "ch.qos.logback"
   )
 
   def main(args: Array[String]): Unit = {
     //    organisations.foreach(x => MVNRepositoryScanner.checkMVNRepository(x, dao))
-    doWork(organisations.map(x => OrganisationCfg(x)))
+//        doWork(MVNRepositoryScanner, organisations.map(x => OrganisationCfg(x)))
+    doWork(new RawRepositoryScanner("http://repo.spray.io"), organisations.map(x => OrganisationCfg(x)))
   }
 
   val rootPackage = "io.github.morgaroth.sbt.commons"
@@ -36,7 +37,7 @@ object Application {
 
   def escape(s: String) = s
 
-  def doWork(config: List[OrganisationCfg]) = {
+  def doWork(scanner: RepoScanner, config: List[OrganisationCfg]) = {
     Try(rootPwd.clear())
     Try(mkdirs(sourcesRoot))
     Try(mkdirs(sourcesRoot / "libraries"))
@@ -44,9 +45,11 @@ object Application {
     pwd / "src" / "main" / "resources" / "raw" copyTo rootPwd
     val engine = new TemplateEngine
     config.map { orgCfg =>
-      val libraries: List[Dependency] = MVNRepositoryScanner.findLibrariesOf(orgCfg).groupBy(_.capitalizedName).mapValues { theSameNameDeps =>
+      val dta = scanner.findLibrariesOf(orgCfg)
+//      println(dta.mkString("\n"))
+      val libraries: List[Dependency] = dta.groupBy(_.capitalizedName).mapValues { theSameNameDeps =>
         val (scalaLibs, javaLibs) = theSameNameDeps.partition(_.scala != "java")
-        if (scalaLibs.nonEmpty && javaLibs.isEmpty) {
+        if (scalaLibs.nonEmpty) {
           val allVersions = scalaLibs.flatMap(x => x.versions.map(_.copy(scala = x.scala)))
           scalaLibs.head.copy(versions = allVersions, scala = "scala")
         } else if (javaLibs.size == 1) {

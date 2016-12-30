@@ -10,7 +10,7 @@ import scala.annotation.tailrec
 /**
   * Created by morgaroth on 05.04.2016.
   */
-object MVNRepositoryScanner {
+object MVNRepositoryScanner extends RepoScanner {
   //  def checkMVNRepository(organisation: String, cache: DependencyDAO) {
   //    val data: List[Dependency] = findPackagesOf(organisation)
   //    val newData = data.flatMap { d =>
